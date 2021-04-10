@@ -1,0 +1,15 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.cniekirk.lasereyes.mixin",
+  "compatibilityLevel": "JAVA_8",
+  "mixins": [
+    "LivingEntityRendererMixin",
+    "WorldRendererMixin"
+  ],
+  "client": [
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
