@@ -4,10 +4,9 @@
   "package": "com.cniekirk.lasereyes.mixin",
   "compatibilityLevel": "JAVA_8",
   "mixins": [
-    "LivingEntityRendererMixin",
-    "WorldRendererMixin"
   ],
   "client": [
+    "WorldRendererMixin"
   ],
   "injectors": {
     "defaultRequire": 1

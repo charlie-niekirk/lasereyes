@@ -1,10 +1,12 @@
 package com.cniekirk.lasereyes.client;
 
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
+
 public class ClientState {
 
     private static ClientState INSTANCE;
-
-    private boolean enabled;
+    private static final Queue<Integer> activeEyes = new ConcurrentLinkedQueue<>();
 
     public static ClientState getInstance() {
         if (INSTANCE == null) {
@@ -15,10 +17,14 @@ public class ClientState {
         return INSTANCE;
     }
 
-    public void setEnabled(final boolean enabled) {
-        this.enabled = enabled;
+    public void playerEyesActive(final int playerId) {
+        activeEyes.add(playerId);
     }
 
-    public boolean isEnabled() { return enabled; }
+    public void playerEyesInactive(final int playerId) {
+        activeEyes.remove(playerId);
+    }
+
+    public Queue<Integer> getActiveEyes() { return activeEyes; }
 
 }
