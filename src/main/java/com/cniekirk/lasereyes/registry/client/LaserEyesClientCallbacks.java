@@ -19,7 +19,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class LaserEyesClientCallbacks {
 
     // TODO: Adjust according to performance impact
-    private final static long RAYCAST_CHECK_INTERVAL = 50;
+    private final static long RAYTRACE_CHECK_INTERVAL = 50;
 
     private static KeyBinding keyBinding;
     private static long lastRaycastCheck;
@@ -50,7 +50,7 @@ public class LaserEyesClientCallbacks {
                         ClientPlayNetworking.send(LaserEyesNetworking.PLAYER_EYES_ACTIVE_PACKET, packetByteBuf);
                     }
                     // Don't perform raycast too often, 16ms is every frame at 60fps
-                    if (System.currentTimeMillis() - lastRaycastCheck > RAYCAST_CHECK_INTERVAL) {
+                    if (System.currentTimeMillis() - lastRaycastCheck > RAYTRACE_CHECK_INTERVAL) {
                         // Send packet to server, with pixel raycast result
                         HitResult hitResult = Raytracer.raytrace(client.player, 1, 125, false);
 

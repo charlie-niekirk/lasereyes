@@ -12,6 +12,9 @@ import net.minecraft.world.World;
 import java.util.Optional;
 import java.util.function.Predicate;
 
+/**
+ * Decent raytracer for shooting blocks/entities
+ */
 public class Raytracer {
 
     public static HitResult raytrace(final Entity source, final float ticks, final float reach, final boolean fluids) {

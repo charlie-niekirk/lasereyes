@@ -14,6 +14,7 @@ public class Lasereyes implements ModInitializer {
 
     @Override
     public void onInitialize() {
+        // Init networking
         LaserEyesServerNetworking.init();
     }
 

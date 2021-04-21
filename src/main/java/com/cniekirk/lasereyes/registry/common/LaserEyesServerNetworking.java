@@ -44,13 +44,11 @@ public class LaserEyesServerNetworking {
                 (server, player, handler, buf, responseSender) -> {
             int entityId = buf.readInt();
             Entity entity = server.getOverworld().getEntityById(entityId);
+            // TODO: Make noise and increase damage
             if (entity != null) {
                 if (!entity.isOnFire()) {
                     entity.setOnFireFor(1);
                 }
-//                entity.damage(DamageSource.ON_FIRE, 2);
-//                player.getEntityWorld().createExplosion(entity, entity.getX(), entity.getY(), entity.getZ(),
-//                        0.0f, true, Explosion.DestructionType.BREAK);
 
                 entity.damage(DamageSource.LIGHTNING_BOLT, 3.0F);
             }

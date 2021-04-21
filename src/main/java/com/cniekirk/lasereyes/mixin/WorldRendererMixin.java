@@ -21,21 +21,38 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+/**
+ * All rendering logic for the lasers goes here
+ */
 @Mixin(WorldRenderer.class)
 public class WorldRendererMixin {
 
+    // Required fields from WorldRenderer
     @Shadow @Final private MinecraftClient client;
     @Shadow @Final private BufferBuilderStorage bufferBuilders;
 
-    @Shadow private int ticks;
     private static final Identifier LASER_BEAM_TEXTURE = Lasereyes.identifier("textures/red.png");
     private static final RenderLayer LASER_BEAM_LAYER = RenderLayer.getEntityTranslucent(LASER_BEAM_TEXTURE);
-    private static final float EYE_BOTTOM = 3.0F * (1.0F / 16.0F);
-    private static final float EYE_TOP = 5.0F * (1.0F / 16.0F);
+    // Best that I've got so far
+    private static final float EYE_BOTTOM = 2.0F * (1.0F / 16.0F);
+    private static final float EYE_TOP = 0F * (1.0F / 16.0F);
     private static final float EYE_START = 1.0F / 16.0F;
     private static final float EYE_END = 3.0F * (1.0F / 16.0F);
     private long lastFrameNanoTime = -1;
 
+    /**
+     * Mixin to the render method when all world rendering setup is complete
+     *
+     * @param matrices the {@link MatrixStack} that we'll manipulate
+     * @param uselessTickDelta heh?
+     * @param limitTime unused
+     * @param renderBlockOutline unused
+     * @param camera may use this to fix looking up/down issue otherwise unused
+     * @param gameRenderer unused
+     * @param lightmapTextureManager unused
+     * @param matrix4f unused
+     * @param ci no need to alter control flow, unused
+     */
     @Inject(at = @At(value = "INVOKE", target = "Lnet/minecraft/client/render/BufferBuilderStorage;getEntityVertexConsumers()Lnet/minecraft/client/render/VertexConsumerProvider$Immediate;"), method = "render")
     void active_eyes_render(MatrixStack matrices, float uselessTickDelta, long limitTime, boolean renderBlockOutline, Camera camera, GameRenderer gameRenderer, LightmapTextureManager lightmapTextureManager, Matrix4f matrix4f, CallbackInfo ci) {
 
@@ -43,10 +60,12 @@ public class WorldRendererMixin {
             lastFrameNanoTime = System.nanoTime();
         }
 
+        // Found this in another mods source, not really sure why I've used it here, can probably be replaced with 'uselessTickDelta'
         float tickDelta = Math.min(0.375F, (System.nanoTime() - lastFrameNanoTime) / 4_000_0000F);
 
+        // Capture current render state
         ClientState state = ClientState.getInstance();
-//
+
         state.getActiveEyes().forEach(entityId -> {
             PlayerEntity entity = (PlayerEntity) client.world.getEntityById(entityId);
             if (entity != null) {
@@ -65,6 +84,7 @@ public class WorldRendererMixin {
 
                     matrices.push();
 
+                    // TODO: Fix looking up and down (Y needs changing here)
                     matrices.translate(entity.getPos().x - client.player.getPos().x, entity.getPos().y - client.player.getPos().y, entity.getPos().z - client.player.getPos().z);
 
                     // Move the lasers very slightly in front onf the players' eyes
@@ -82,52 +102,49 @@ public class WorldRendererMixin {
                     Matrix3f matrix3f = entry.getNormal();
                     float q = (float) 1 / 4.0F;
 
-
-
+                    // TODO: Put in some sort of loop or something it's pretty messy
+                    // TODO: Add laser noise and dynamically changing translucency
                     // Right eye
-                    vertexConsumer.vertex(matrix4, 0.35F, 0.15F, 0F).color(255, 0, 0, 255).texture(m, h).overlay(OverlayTexture.DEFAULT_UV).light(15728880).normal(matrix3f, 0.0F, -1.0F, 0.0F).next();
-                    vertexConsumer.vertex(matrix4, 0.35F, 0.15F, g).color(255, 0, 0, 255).texture(m, i).overlay(OverlayTexture.DEFAULT_UV).light(15728880).normal(matrix3f, 0.0F, -1.0F, 0.0F).next();
-                    vertexConsumer.vertex(matrix4, 0.35F, 0.0F, g).color(255, 0, 0, 255).texture(q, i).overlay(OverlayTexture.DEFAULT_UV).light(15728880).normal(matrix3f, 0.0F, -1.0F, 0.0F).next();
-                    vertexConsumer.vertex(matrix4, 0.35F, 0.0F, 0F).color(255, 0, 0, 255).texture(q, h).overlay(OverlayTexture.DEFAULT_UV).light(15728880).normal(matrix3f, 0.0F, -1.0F, 0.0F).next();
+                    vertexConsumer.vertex(matrix4, EYE_END, EYE_TOP, 0F).color(255, 0, 0, 255).texture(m, h).overlay(OverlayTexture.DEFAULT_UV).light(15728880).normal(matrix3f, 0.0F, -1.0F, 0.0F).next();
+                    vertexConsumer.vertex(matrix4, EYE_END, EYE_TOP, g).color(255, 0, 0, 255).texture(m, i).overlay(OverlayTexture.DEFAULT_UV).light(15728880).normal(matrix3f, 0.0F, -1.0F, 0.0F).next();
+                    vertexConsumer.vertex(matrix4, EYE_END, EYE_BOTTOM, g).color(255, 0, 0, 255).texture(q, i).overlay(OverlayTexture.DEFAULT_UV).light(15728880).normal(matrix3f, 0.0F, -1.0F, 0.0F).next();
+                    vertexConsumer.vertex(matrix4, EYE_END, EYE_BOTTOM, 0F).color(255, 0, 0, 255).texture(q, h).overlay(OverlayTexture.DEFAULT_UV).light(15728880).normal(matrix3f, 0.0F, -1.0F, 0.0F).next();
 
-                    vertexConsumer.vertex(matrix4, 0.15F, 0.15F, 0F).color(255, 0, 0, 255).texture(m, h).overlay(OverlayTexture.DEFAULT_UV).light(15728880).normal(matrix3f, 0.0F, -1.0F, 0.0F).next();
-                    vertexConsumer.vertex(matrix4, 0.15F, 0.15F, g).color(255, 0, 0, 255).texture(m, i).overlay(OverlayTexture.DEFAULT_UV).light(15728880).normal(matrix3f, 0.0F, -1.0F, 0.0F).next();
-                    vertexConsumer.vertex(matrix4, 0.15F, 0.0F, g).color(255, 0, 0, 255).texture(q, i).overlay(OverlayTexture.DEFAULT_UV).light(15728880).normal(matrix3f, 0.0F, -1.0F, 0.0F).next();
-                    vertexConsumer.vertex(matrix4, 0.15F, 0.0F, 0F).color(255, 0, 0, 255).texture(q, h).overlay(OverlayTexture.DEFAULT_UV).light(15728880).normal(matrix3f, 0.0F, -1.0F, 0.0F).next();
+                    vertexConsumer.vertex(matrix4, EYE_START, EYE_TOP, 0F).color(255, 0, 0, 255).texture(m, h).overlay(OverlayTexture.DEFAULT_UV).light(15728880).normal(matrix3f, 0.0F, -1.0F, 0.0F).next();
+                    vertexConsumer.vertex(matrix4, EYE_START, EYE_TOP, g).color(255, 0, 0, 255).texture(m, i).overlay(OverlayTexture.DEFAULT_UV).light(15728880).normal(matrix3f, 0.0F, -1.0F, 0.0F).next();
+                    vertexConsumer.vertex(matrix4, EYE_START, EYE_BOTTOM, g).color(255, 0, 0, 255).texture(q, i).overlay(OverlayTexture.DEFAULT_UV).light(15728880).normal(matrix3f, 0.0F, -1.0F, 0.0F).next();
+                    vertexConsumer.vertex(matrix4, EYE_START, EYE_BOTTOM, 0F).color(255, 0, 0, 255).texture(q, h).overlay(OverlayTexture.DEFAULT_UV).light(15728880).normal(matrix3f, 0.0F, -1.0F, 0.0F).next();
 
-                    vertexConsumer.vertex(matrix4, 0.15F, 0.15F, 0F).color(255, 0, 0, 255).texture(m, h).overlay(OverlayTexture.DEFAULT_UV).light(15728880).normal(matrix3f, 0.0F, -1.0F, 0.0F).next();
-                    vertexConsumer.vertex(matrix4, 0.15F, 0.15F, g).color(255, 0, 0, 255).texture(m, i).overlay(OverlayTexture.DEFAULT_UV).light(15728880).normal(matrix3f, 0.0F, -1.0F, 0.0F).next();
-                    vertexConsumer.vertex(matrix4, 0.35F, 0.15F, g).color(255, 0, 0, 255).texture(q, i).overlay(OverlayTexture.DEFAULT_UV).light(15728880).normal(matrix3f, 0.0F, -1.0F, 0.0F).next();
-                    vertexConsumer.vertex(matrix4, 0.35F, 0.15F, 0F).color(255, 0, 0, 255).texture(q, h).overlay(OverlayTexture.DEFAULT_UV).light(15728880).normal(matrix3f, 0.0F, -1.0F, 0.0F).next();
+                    vertexConsumer.vertex(matrix4, EYE_START, EYE_TOP, 0F).color(255, 0, 0, 255).texture(m, h).overlay(OverlayTexture.DEFAULT_UV).light(15728880).normal(matrix3f, 0.0F, -1.0F, 0.0F).next();
+                    vertexConsumer.vertex(matrix4, EYE_START, EYE_TOP, g).color(255, 0, 0, 255).texture(m, i).overlay(OverlayTexture.DEFAULT_UV).light(15728880).normal(matrix3f, 0.0F, -1.0F, 0.0F).next();
+                    vertexConsumer.vertex(matrix4, EYE_END, EYE_TOP, g).color(255, 0, 0, 255).texture(q, i).overlay(OverlayTexture.DEFAULT_UV).light(15728880).normal(matrix3f, 0.0F, -1.0F, 0.0F).next();
+                    vertexConsumer.vertex(matrix4, EYE_END, EYE_TOP, 0F).color(255, 0, 0, 255).texture(q, h).overlay(OverlayTexture.DEFAULT_UV).light(15728880).normal(matrix3f, 0.0F, -1.0F, 0.0F).next();
 
-                    vertexConsumer.vertex(matrix4, 0.15F, 0.0F, 0F).color(255, 0, 0, 255).texture(m, h).overlay(OverlayTexture.DEFAULT_UV).light(15728880).normal(matrix3f, 0.0F, -1.0F, 0.0F).next();
-                    vertexConsumer.vertex(matrix4, 0.15F, 0.0F, g).color(255, 0, 0, 255).texture(m, i).overlay(OverlayTexture.DEFAULT_UV).light(15728880).normal(matrix3f, 0.0F, -1.0F, 0.0F).next();
-                    vertexConsumer.vertex(matrix4, 0.35F, 0.0F, g).color(255, 0, 0, 255).texture(q, i).overlay(OverlayTexture.DEFAULT_UV).light(15728880).normal(matrix3f, 0.0F, -1.0F, 0.0F).next();
-                    vertexConsumer.vertex(matrix4, 0.35F, 0.0F, 0F).color(255, 0, 0, 255).texture(q, h).overlay(OverlayTexture.DEFAULT_UV).light(15728880).normal(matrix3f, 0.0F, -1.0F, 0.0F).next();
+                    vertexConsumer.vertex(matrix4, EYE_START, EYE_BOTTOM, 0F).color(255, 0, 0, 255).texture(m, h).overlay(OverlayTexture.DEFAULT_UV).light(15728880).normal(matrix3f, 0.0F, -1.0F, 0.0F).next();
+                    vertexConsumer.vertex(matrix4, EYE_START, EYE_BOTTOM, g).color(255, 0, 0, 255).texture(m, i).overlay(OverlayTexture.DEFAULT_UV).light(15728880).normal(matrix3f, 0.0F, -1.0F, 0.0F).next();
+                    vertexConsumer.vertex(matrix4, EYE_END, EYE_BOTTOM, g).color(255, 0, 0, 255).texture(q, i).overlay(OverlayTexture.DEFAULT_UV).light(15728880).normal(matrix3f, 0.0F, -1.0F, 0.0F).next();
+                    vertexConsumer.vertex(matrix4, EYE_END, EYE_BOTTOM, 0F).color(255, 0, 0, 255).texture(q, h).overlay(OverlayTexture.DEFAULT_UV).light(15728880).normal(matrix3f, 0.0F, -1.0F, 0.0F).next();
 
                     // Left Eye
-                    vertexConsumer.vertex(matrix4, -0.35F, 0.15F, 0F).color(255, 0, 0, 255).texture(m, h).overlay(OverlayTexture.DEFAULT_UV).light(15728880).normal(matrix3f, 0.0F, -1.0F, 0.0F).next();
-                    vertexConsumer.vertex(matrix4, -0.35F, 0.15F, g).color(255, 0, 0, 255).texture(m, i).overlay(OverlayTexture.DEFAULT_UV).light(15728880).normal(matrix3f, 0.0F, -1.0F, 0.0F).next();
-                    vertexConsumer.vertex(matrix4, -0.35F, 0.0F, g).color(255, 0, 0, 255).texture(q, i).overlay(OverlayTexture.DEFAULT_UV).light(15728880).normal(matrix3f, 0.0F, -1.0F, 0.0F).next();
-                    vertexConsumer.vertex(matrix4, -0.35F, 0.0F, 0F).color(255, 0, 0, 255).texture(q, h).overlay(OverlayTexture.DEFAULT_UV).light(15728880).normal(matrix3f, 0.0F, -1.0F, 0.0F).next();
+                    vertexConsumer.vertex(matrix4, -EYE_END, EYE_TOP, 0F).color(255, 0, 0, 255).texture(m, h).overlay(OverlayTexture.DEFAULT_UV).light(15728880).normal(matrix3f, 0.0F, -1.0F, 0.0F).next();
+                    vertexConsumer.vertex(matrix4, -EYE_END, EYE_TOP, g).color(255, 0, 0, 255).texture(m, i).overlay(OverlayTexture.DEFAULT_UV).light(15728880).normal(matrix3f, 0.0F, -1.0F, 0.0F).next();
+                    vertexConsumer.vertex(matrix4, -EYE_END, EYE_BOTTOM, g).color(255, 0, 0, 255).texture(q, i).overlay(OverlayTexture.DEFAULT_UV).light(15728880).normal(matrix3f, 0.0F, -1.0F, 0.0F).next();
+                    vertexConsumer.vertex(matrix4, -EYE_END, EYE_BOTTOM, 0F).color(255, 0, 0, 255).texture(q, h).overlay(OverlayTexture.DEFAULT_UV).light(15728880).normal(matrix3f, 0.0F, -1.0F, 0.0F).next();
 
-                    vertexConsumer.vertex(matrix4, -0.15F, 0.15F, 0F).color(255, 0, 0, 255).texture(m, h).overlay(OverlayTexture.DEFAULT_UV).light(15728880).normal(matrix3f, 0.0F, -1.0F, 0.0F).next();
-                    vertexConsumer.vertex(matrix4, -0.15F, 0.15F, g).color(255, 0, 0, 255).texture(m, i).overlay(OverlayTexture.DEFAULT_UV).light(15728880).normal(matrix3f, 0.0F, -1.0F, 0.0F).next();
-                    vertexConsumer.vertex(matrix4, -0.15F, 0.0F, g).color(255, 0, 0, 255).texture(q, i).overlay(OverlayTexture.DEFAULT_UV).light(15728880).normal(matrix3f, 0.0F, -1.0F, 0.0F).next();
-                    vertexConsumer.vertex(matrix4, -0.15F, 0.0F, 0F).color(255, 0, 0, 255).texture(q, h).overlay(OverlayTexture.DEFAULT_UV).light(15728880).normal(matrix3f, 0.0F, -1.0F, 0.0F).next();
+                    vertexConsumer.vertex(matrix4, -EYE_START, EYE_TOP, 0F).color(255, 0, 0, 255).texture(m, h).overlay(OverlayTexture.DEFAULT_UV).light(15728880).normal(matrix3f, 0.0F, -1.0F, 0.0F).next();
+                    vertexConsumer.vertex(matrix4, -EYE_START, EYE_TOP, g).color(255, 0, 0, 255).texture(m, i).overlay(OverlayTexture.DEFAULT_UV).light(15728880).normal(matrix3f, 0.0F, -1.0F, 0.0F).next();
+                    vertexConsumer.vertex(matrix4, -EYE_START, EYE_BOTTOM, g).color(255, 0, 0, 255).texture(q, i).overlay(OverlayTexture.DEFAULT_UV).light(15728880).normal(matrix3f, 0.0F, -1.0F, 0.0F).next();
+                    vertexConsumer.vertex(matrix4, -EYE_START, EYE_BOTTOM, 0F).color(255, 0, 0, 255).texture(q, h).overlay(OverlayTexture.DEFAULT_UV).light(15728880).normal(matrix3f, 0.0F, -1.0F, 0.0F).next();
 
-                    vertexConsumer.vertex(matrix4, -0.15F, 0.15F, 0F).color(255, 0, 0, 255).texture(m, h).overlay(OverlayTexture.DEFAULT_UV).light(15728880).normal(matrix3f, 0.0F, -1.0F, 0.0F).next();
-                    vertexConsumer.vertex(matrix4, -0.15F, 0.15F, g).color(255, 0, 0, 255).texture(m, i).overlay(OverlayTexture.DEFAULT_UV).light(15728880).normal(matrix3f, 0.0F, -1.0F, 0.0F).next();
-                    vertexConsumer.vertex(matrix4, -0.35F, 0.15F, g).color(255, 0, 0, 255).texture(q, i).overlay(OverlayTexture.DEFAULT_UV).light(15728880).normal(matrix3f, 0.0F, -1.0F, 0.0F).next();
-                    vertexConsumer.vertex(matrix4, -0.35F, 0.15F, 0F).color(255, 0, 0, 255).texture(q, h).overlay(OverlayTexture.DEFAULT_UV).light(15728880).normal(matrix3f, 0.0F, -1.0F, 0.0F).next();
+                    vertexConsumer.vertex(matrix4, -EYE_START, EYE_TOP, 0F).color(255, 0, 0, 255).texture(m, h).overlay(OverlayTexture.DEFAULT_UV).light(15728880).normal(matrix3f, 0.0F, -1.0F, 0.0F).next();
+                    vertexConsumer.vertex(matrix4, -EYE_START, EYE_TOP, g).color(255, 0, 0, 255).texture(m, i).overlay(OverlayTexture.DEFAULT_UV).light(15728880).normal(matrix3f, 0.0F, -1.0F, 0.0F).next();
+                    vertexConsumer.vertex(matrix4, -EYE_END, EYE_TOP, g).color(255, 0, 0, 255).texture(q, i).overlay(OverlayTexture.DEFAULT_UV).light(15728880).normal(matrix3f, 0.0F, -1.0F, 0.0F).next();
+                    vertexConsumer.vertex(matrix4, -EYE_END, EYE_TOP, 0F).color(255, 0, 0, 255).texture(q, h).overlay(OverlayTexture.DEFAULT_UV).light(15728880).normal(matrix3f, 0.0F, -1.0F, 0.0F).next();
 
-                    vertexConsumer.vertex(matrix4, -0.15F, 0.0F, 0F).color(255, 0, 0, 255).texture(m, h).overlay(OverlayTexture.DEFAULT_UV).light(15728880).normal(matrix3f, 0.0F, -1.0F, 0.0F).next();
-                    vertexConsumer.vertex(matrix4, -0.15F, 0.0F, g).color(255, 0, 0, 255).texture(m, i).overlay(OverlayTexture.DEFAULT_UV).light(15728880).normal(matrix3f, 0.0F, -1.0F, 0.0F).next();
-                    vertexConsumer.vertex(matrix4, -0.35F, 0.0F, g).color(255, 0, 0, 255).texture(q, i).overlay(OverlayTexture.DEFAULT_UV).light(15728880).normal(matrix3f, 0.0F, -1.0F, 0.0F).next();
-                    vertexConsumer.vertex(matrix4, -0.35F, 0.0F, 0F).color(255, 0, 0, 255).texture(q, h).overlay(OverlayTexture.DEFAULT_UV).light(15728880).normal(matrix3f, 0.0F, -1.0F, 0.0F).next();
-
-
-                    m = q;
+                    vertexConsumer.vertex(matrix4, -EYE_START, EYE_BOTTOM, 0F).color(255, 0, 0, 255).texture(m, h).overlay(OverlayTexture.DEFAULT_UV).light(15728880).normal(matrix3f, 0.0F, -1.0F, 0.0F).next();
+                    vertexConsumer.vertex(matrix4, -EYE_START, EYE_BOTTOM, g).color(255, 0, 0, 255).texture(m, i).overlay(OverlayTexture.DEFAULT_UV).light(15728880).normal(matrix3f, 0.0F, -1.0F, 0.0F).next();
+                    vertexConsumer.vertex(matrix4, -EYE_END, EYE_BOTTOM, g).color(255, 0, 0, 255).texture(q, i).overlay(OverlayTexture.DEFAULT_UV).light(15728880).normal(matrix3f, 0.0F, -1.0F, 0.0F).next();
+                    vertexConsumer.vertex(matrix4, -EYE_END, EYE_BOTTOM, 0F).color(255, 0, 0, 255).texture(q, h).overlay(OverlayTexture.DEFAULT_UV).light(15728880).normal(matrix3f, 0.0F, -1.0F, 0.0F).next();
 
                     matrices.pop();
 
@@ -136,21 +153,5 @@ public class WorldRendererMixin {
         });
 
     }
-
-//    public void rotate(MatrixStack matrix, PlayerEntity entity) {
-//        matrix.translate((double)(entity.pivot / 16.0F), (double)(this.pivotY / 16.0F), (double)(this.pivotZ / 16.0F));
-//        if (this.roll != 0.0F) {
-//            matrix.multiply(Vector3f.POSITIVE_Z.getRadialQuaternion(this.roll));
-//        }
-//
-//        if (this.yaw != 0.0F) {
-//            matrix.multiply(Vector3f.POSITIVE_Y.getRadialQuaternion(this.yaw));
-//        }
-//
-//        if (this.pitch != 0.0F) {
-//            matrix.multiply(Vector3f.POSITIVE_X.getRadialQuaternion(this.pitch));
-//        }
-//
-//    }
 
 }
